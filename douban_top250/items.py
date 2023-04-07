@@ -16,8 +16,8 @@ class MovieItem(scrapy.Item):
     # 定义电影的属性
     name = scrapy.Field()
     year = scrapy.Field()
-    image = scrapy.Field()
-    image_path = scrapy.Field()
+    image_urls = scrapy.Field()
+    image_paths = scrapy.Field()
     director = scrapy.Field()
     actors = scrapy.Field()
     rating = scrapy.Field()
@@ -27,5 +27,4 @@ class MovieItem(scrapy.Item):
 class MyItem(scrapy.Item):
     name = scrapy.Field()
     image_urls = scrapy.Field()
-    # images = scrapy.Field()
     image_paths = scrapy.Field()
