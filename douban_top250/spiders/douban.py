@@ -18,7 +18,6 @@ class DoubanSpider(scrapy.Spider):
 
     def parse(self, response):
         # 提取电影信息
-
         for item in response.css('div.item'):
             myitem = MyItem()
             myitem['name'] = item.css('span.title::text').get()
@@ -30,14 +29,3 @@ class DoubanSpider(scrapy.Spider):
         # if next_url:
         #     yield scrapy.Request(response.urljoin(next_url))
 
-    # def save_image(self, response):
-    #     # 从meta中获取item对象
-    #     print(f'response ===================: {response}')
-    #     item = response.meta['item']
-    #     # 将图片保存到本地目录中
-    #     image_path = item['image_path']
-    #     with open(image_path, 'wb') as f:
-    #         # 使用urllib库实现流式写入
-    #         with urllib.request.urlopen(item['image_url']) as response_stream:
-    #             for chunk in response_stream:
-    #                 f.write(chunk)
