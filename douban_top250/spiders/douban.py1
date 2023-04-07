@@ -1,0 +1,96 @@
+import json
+import os
+import urllib.request
+
+import scrapy
+from scrapy.loader import ItemLoader
+
+from douban_top250.items import MovieItem
+
+
+def write_json(filename, data):
+    # 打开JSON文件，如果文件不存在则创建它
+    with open(filename, 'a+', encoding='utf8') as f:
+        try:
+            # 尝试加载现有JSON数据
+            origin_data = json.load(f)
+        except:
+            # 如果文件为空或无效，则创建一个空列表
+            origin_data = []
+
+        # 追加新的JSON数据到字典中
+        origin_data.append(data)
+
+        # 将更新后的数据写回文件
+        f.seek(0)
+        json.dump(origin_data, f, ensure_ascii=False)
+
+
+# def parse_movie(response):
+#     # 解析电影详情页内容，获取需要的数据
+#     movie_name = response.css('h1 span::text').get()
+#     director = response.css('a[rel="v:directedBy"]::text').get()
+#     actors = response.css('a[rel="v:starring"]::text').getall()
+#     rating = response.css('strong.rating_num::text').get()
+#     votes = response.css('span[property="v:votes"]::text').get()
+#
+#     # 保存数据到本地文件中
+#     write_json('movies.json', {
+#             'name': movie_name,
+#             'director': director,
+#             'actors': actors,
+#             'rating': rating,
+#             'votes': votes
+#         })
+def save_image(response):
+    # 从meta中获取item对象
+    item = response.meta['item']
+    # 将图片保存到本地目录中
+    filename = item['name'][0] + '.jpg'
+    with open(os.path.join('images', filename), 'wb') as f:
+        # 使用urllib库实现流式写入
+        with urllib.request.urlopen(item['image'][0]) as response_stream:
+            for chunk in response_stream:
+                f.write(chunk)
+    item['image_path'] = [os.path.abspath(os.path.join('images', filename))]
+    # 将item保存到items.json中
+    yield item
+
+
+def parse_movie(response):
+    # 创建ItemLoader，用于填充MovieItem
+    loader = ItemLoader(item=MovieItem(), response=response)
+
+    # 解析电影详情页内容，获取需要的数据
+    loader.add_css('name', 'h1 span[property="v:itemreviewed"]::text')
+    loader.add_css('year', 'h1 span.year::text', re=r'\((.*)\)')
+    loader.add_css('image', 'a.nbgnbg img::attr(src)')
+    loader.add_css('director', 'a[rel="v:directedBy"]::text')
+    loader.add_css('actors', 'a[rel="v:starring"]::text')
+    loader.add_css('rating', 'strong.rating_num::text')
+    loader.add_css('votes', 'span[property="v:votes"]::text')
+
+    # 返回填充好的Item
+    item = loader.load_item()
+
+    return item
+
+
+class DoubanSpider(scrapy.Spider):
+    name = 'douban'
+    allowed_domains = ['movie.douban.com']
+    start_urls = ['https://movie.douban.com/top250']
+
+    def parse(self, response, **kwargs):
+        # 解析电影列表，获取电影详情页链接
+        movie_links = response.css('div.hd a::attr(href)').getall()
+
+        # 遍历电影详情页链接，发送HTTP请求，获取电影详情信息
+        for link in movie_links:
+            yield scrapy.Request(url=link, callback=parse_movie)
+
+        # # 解析下一页链接，继续爬取
+        # next_page_link = response.css('span.next a::attr(href)').get()
+        # if next_page_link:
+        #     next_page_link = f'{self.start_urls[0]}{next_page_link}'
+        #     yield scrapy.Request(url=next_page_link, callback=self.parse)
